@@ -11,6 +11,16 @@ export const customersService = {
     return response.data;
   },
 
+  async update(id, data) {
+    const response = await api.patch(`/customers/${id}`, data);
+    return response.data;
+  },
+
+  async delete(id) {
+    const response = await api.delete(`/customers/${id}`);
+    return response.data;
+  },
+
   async importExcel(file) {
     const formData = new FormData();
     formData.append('file', file);

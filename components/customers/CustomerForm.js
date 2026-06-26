@@ -6,21 +6,26 @@ import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import { ModalFooter } from '@/components/ui/Modal';
 
-const initialState = {
-  fullName: '',
-  phoneNumber: '',
-  guarantorName: '',
-  guarantorPhone: '',
-  dueDate: '',
-  importedOverdueDays: '',
-  notes: '',
-  tags: '',
-};
+function toDateInput(isoString) {
+  if (!isoString) return '';
+  return new Date(isoString).toISOString().slice(0, 10);
+}
 
-export default function CustomerForm({ onSubmit, onCancel }) {
-  const [form, setForm] = useState(initialState);
+export default function CustomerForm({ onSubmit, onCancel, initialData = null }) {
+  const isEdit = !!initialData;
+
+  const [form, setForm] = useState({
+    fullName:            initialData?.fullName            ?? '',
+    phoneNumber:         initialData?.phoneNumber         ?? '',
+    guarantorName:       initialData?.guarantorName       ?? '',
+    guarantorPhone:      initialData?.guarantorPhone      ?? '',
+    dueDate:             toDateInput(initialData?.dueDate),
+    importedOverdueDays: initialData?.importedOverdueDays ?? '',
+    notes:               initialData?.notes               ?? '',
+    tags:                initialData?.tags?.join(', ')    ?? '',
+  });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,7 +44,6 @@ export default function CustomerForm({ onSubmit, onCancel }) {
         tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       };
       await onSubmit(payload);
-      setForm(initialState);
     } catch (err) {
       setError(err.response?.data?.message || 'حدث خطأ أثناء حفظ البيانات');
     } finally {
@@ -136,7 +140,7 @@ export default function CustomerForm({ onSubmit, onCancel }) {
           إلغاء
         </Button>
         <Button type="submit" loading={loading}>
-          حفظ العميل
+          {isEdit ? 'حفظ التعديلات' : 'حفظ العميل'}
         </Button>
       </ModalFooter>
     </form>

@@ -11,12 +11,24 @@ import Spinner from '@/components/ui/Spinner';
 import Alert from '@/components/ui/Alert';
 
 export default function TemplatesPage() {
-  const { templates, loading, error, createTemplate, deleteTemplate } = useTemplates();
-  const [showModal, setShowModal] = useState(false);
+  const { templates, loading, error, createTemplate, updateTemplate, deleteTemplate } = useTemplates();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [actionError, setActionError]         = useState(null);
 
   const handleCreate = async (data) => {
     await createTemplate(data);
-    setShowModal(false);
+    setShowCreateModal(false);
+  };
+
+  const handleEdit = async (data) => {
+    setActionError(null);
+    try {
+      await updateTemplate(editingTemplate.id, data);
+      setEditingTemplate(null);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'فشل في تعديل القالب');
+    }
   };
 
   return (
@@ -25,13 +37,11 @@ export default function TemplatesPage() {
         title="قوالب الرسائل"
         subtitle={`${templates.length.toLocaleString('ar-EG')} قالب متاح`}
         actions={
-          <Button onClick={() => setShowModal(true)}>
-            + قالب جديد
-          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>+ قالب جديد</Button>
         }
       />
 
-      <Alert variant="error" message={error} />
+      <Alert variant="error" message={error || actionError} />
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -44,9 +54,7 @@ export default function TemplatesPage() {
           </svg>
           <p className="text-sm font-medium text-slate-500">لا توجد قوالب بعد</p>
           <p className="text-xs text-slate-400 mt-1">أنشئ أول قالب رسالة لبدء إرسال الحملات</p>
-          <Button className="mt-4" size="sm" onClick={() => setShowModal(true)}>
-            + إنشاء قالب
-          </Button>
+          <Button className="mt-4" size="sm" onClick={() => setShowCreateModal(true)}>+ إنشاء قالب</Button>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -54,14 +62,25 @@ export default function TemplatesPage() {
             <TemplateCard
               key={template.id}
               template={template}
+              onEdit={setEditingTemplate}
               onDelete={deleteTemplate}
             />
           ))}
         </div>
       )}
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="إنشاء قالب جديد" size="lg">
-        <TemplateForm onSubmit={handleCreate} onCancel={() => setShowModal(false)} />
+      {/* مودال الإنشاء */}
+      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="إنشاء قالب جديد" size="lg">
+        <TemplateForm onSubmit={handleCreate} onCancel={() => setShowCreateModal(false)} />
+      </Modal>
+
+      {/* مودال التعديل */}
+      <Modal isOpen={!!editingTemplate} onClose={() => setEditingTemplate(null)} title="تعديل القالب" size="lg">
+        <TemplateForm
+          initialData={editingTemplate}
+          onSubmit={handleEdit}
+          onCancel={() => setEditingTemplate(null)}
+        />
       </Modal>
     </div>
   );

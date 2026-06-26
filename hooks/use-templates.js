@@ -42,6 +42,12 @@ export function useTemplates(initialParams = {}) {
     return result;
   }, [params, fetchTemplates]);
 
+  const updateTemplate = useCallback(async (id, data) => {
+    const result = await templatesService.update(id, data);
+    await fetchTemplates(params);
+    return result;
+  }, [params, fetchTemplates]);
+
   const deleteTemplate = useCallback(async (id) => {
     const result = await templatesService.delete(id);
     await fetchTemplates(params);
@@ -56,6 +62,7 @@ export function useTemplates(initialParams = {}) {
     params,
     updateParams,
     createTemplate,
+    updateTemplate,
     deleteTemplate,
     refresh: () => fetchTemplates(params),
   };

@@ -21,10 +21,17 @@ const GROUP_OPTIONS = [
 ];
 
 export default function CustomersPage() {
-  const { customers, pagination, loading, error, params, updateParams, createCustomer, importExcel } = useCustomers();
-  const [showAddModal, setShowAddModal] = useState(false);
+  const {
+    customers, pagination, loading, error,
+    params, updateParams,
+    createCustomer, updateCustomer, deleteCustomer, importExcel,
+  } = useCustomers();
+
+  const [showAddModal, setShowAddModal]       = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [search, setSearch] = useState('');
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [actionError, setActionError]         = useState(null);
+  const [search, setSearch]                   = useState('');
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -35,13 +42,28 @@ export default function CustomersPage() {
     updateParams({ customerGroup: e.target.value || undefined, page: 1 });
   };
 
-  const handlePageChange = (page) => {
-    updateParams({ page });
-  };
-
   const handleCreate = async (data) => {
     await createCustomer(data);
     setShowAddModal(false);
+  };
+
+  const handleEdit = async (data) => {
+    setActionError(null);
+    try {
+      await updateCustomer(editingCustomer.id, data);
+      setEditingCustomer(null);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'فشل في تعديل بيانات العميل');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    setActionError(null);
+    try {
+      await deleteCustomer(id);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'فشل في حذف العميل');
+    }
   };
 
   const handleImport = async (file) => {
@@ -68,7 +90,7 @@ export default function CustomersPage() {
         }
       />
 
-      <Alert variant="error" message={error} />
+      <Alert variant="error" message={error || actionError} />
 
       <div className="flex gap-3">
         <form onSubmit={handleSearch} className="flex gap-2 flex-1">
@@ -92,13 +114,26 @@ export default function CustomersPage() {
         customers={customers}
         pagination={pagination}
         loading={loading}
-        onPageChange={handlePageChange}
+        onPageChange={(page) => updateParams({ page })}
+        onEdit={setEditingCustomer}
+        onDelete={handleDelete}
       />
 
+      {/* مودال الإضافة */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="إضافة عميل جديد" size="lg">
         <CustomerForm onSubmit={handleCreate} onCancel={() => setShowAddModal(false)} />
       </Modal>
 
+      {/* مودال التعديل */}
+      <Modal isOpen={!!editingCustomer} onClose={() => setEditingCustomer(null)} title="تعديل بيانات العميل" size="lg">
+        <CustomerForm
+          initialData={editingCustomer}
+          onSubmit={handleEdit}
+          onCancel={() => setEditingCustomer(null)}
+        />
+      </Modal>
+
+      {/* مودال الاستيراد */}
       <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title="استيراد عملاء من Excel">
         <ImportExcelModal onImport={handleImport} onCancel={() => setShowImportModal(false)} />
       </Modal>

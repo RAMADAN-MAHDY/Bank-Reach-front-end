@@ -42,6 +42,18 @@ export function useCustomers(initialParams = {}) {
     return result;
   }, [params, fetchCustomers]);
 
+  const updateCustomer = useCallback(async (id, data) => {
+    const result = await customersService.update(id, data);
+    await fetchCustomers(params);
+    return result;
+  }, [params, fetchCustomers]);
+
+  const deleteCustomer = useCallback(async (id) => {
+    const result = await customersService.delete(id);
+    await fetchCustomers(params);
+    return result;
+  }, [params, fetchCustomers]);
+
   const importExcel = useCallback(async (file) => {
     const result = await customersService.importExcel(file);
     await fetchCustomers(params);
@@ -56,6 +68,8 @@ export function useCustomers(initialParams = {}) {
     params,
     updateParams,
     createCustomer,
+    updateCustomer,
+    deleteCustomer,
     importExcel,
     refresh: () => fetchCustomers(params),
   };

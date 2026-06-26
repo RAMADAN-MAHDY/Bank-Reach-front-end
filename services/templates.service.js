@@ -16,6 +16,11 @@ export const templatesService = {
     return response.data;
   },
 
+  async update(id, data) {
+    const response = await api.patch(`/templates/${id}`, data);
+    return response.data;
+  },
+
   async delete(id) {
     const response = await api.delete(`/templates/${id}`);
     return response.data;

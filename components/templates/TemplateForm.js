@@ -9,10 +9,15 @@ import { ModalFooter } from '@/components/ui/Modal';
 
 const AVAILABLE_VARIABLES = ['fullName', 'overdueDays', 'guarantorName', 'guarantorPhone', 'phoneNumber', 'dueDate'];
 
-export default function TemplateForm({ onSubmit, onCancel }) {
-  const [form, setForm] = useState({ name: '', body: '' });
+export default function TemplateForm({ onSubmit, onCancel, initialData = null }) {
+  const isEdit = !!initialData;
+
+  const [form, setForm] = useState({
+    name: initialData?.name ?? '',
+    body: initialData?.body ?? '',
+  });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,7 +38,6 @@ export default function TemplateForm({ onSubmit, onCancel }) {
     setError(null);
     try {
       await onSubmit(form);
-      setForm({ name: '', body: '' });
     } catch (err) {
       setError(err.response?.data?.message || 'حدث خطأ أثناء حفظ القالب');
     } finally {
@@ -81,9 +85,7 @@ export default function TemplateForm({ onSubmit, onCancel }) {
           placeholder="عزيزي {{fullName}}، نذكرك بأن قسطك متأخر لمدة {{overdueDays}} يوم."
           rows={5}
         />
-        <p className="mt-1 text-xs text-slate-400">
-          انقر على المتغير لإدراجه في نص الرسالة
-        </p>
+        <p className="mt-1 text-xs text-slate-400">انقر على المتغير لإدراجه في نص الرسالة</p>
       </div>
 
       <ModalFooter>
@@ -91,7 +93,7 @@ export default function TemplateForm({ onSubmit, onCancel }) {
           إلغاء
         </Button>
         <Button type="submit" loading={loading}>
-          حفظ القالب
+          {isEdit ? 'حفظ التعديلات' : 'حفظ القالب'}
         </Button>
       </ModalFooter>
     </form>
