@@ -11,7 +11,7 @@ import Spinner from '@/components/ui/Spinner';
 import Alert from '@/components/ui/Alert';
 
 export default function TemplatesPage() {
-  const { templates, loading, error, createTemplate } = useTemplates();
+  const { templates, loading, error, createTemplate, deleteTemplate } = useTemplates();
   const [showModal, setShowModal] = useState(false);
 
   const handleCreate = async (data) => {
@@ -54,6 +54,7 @@ export default function TemplatesPage() {
             <TemplateCard
               key={template.id}
               template={template}
+              onDelete={deleteTemplate}
             />
           ))}
         </div>

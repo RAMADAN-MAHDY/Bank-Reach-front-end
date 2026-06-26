@@ -42,11 +42,34 @@ export function useCampaigns(initialParams = {}) {
     return result;
   }, [params, fetchCampaigns]);
 
+  const updateCampaign = useCallback(async (id, data) => {
+    const result = await campaignsService.update(id, data);
+    await fetchCampaigns(params);
+    return result;
+  }, [params, fetchCampaigns]);
+
+  const deleteCampaign = useCallback(async (id) => {
+    const result = await campaignsService.delete(id);
+    await fetchCampaigns(params);
+    return result;
+  }, [params, fetchCampaigns]);
+
   const triggerCampaign = useCallback(async (id) => {
     const result = await campaignsService.trigger(id);
     await fetchCampaigns(params);
     return result;
   }, [params, fetchCampaigns]);
+
+  // تحديث بيانات حملة واحدة بدون إعادة جلب الكل (من WebSocket)
+  const applySocketUpdate = useCallback((data) => {
+    setCampaigns((prev) =>
+      prev.map((c) =>
+        c.id === data.campaignId
+          ? { ...c, status: data.status ?? c.status, _progress: data.progress ?? null }
+          : c
+      )
+    );
+  }, []);
 
   return {
     campaigns,
@@ -56,7 +79,10 @@ export function useCampaigns(initialParams = {}) {
     params,
     updateParams,
     createCampaign,
+    updateCampaign,
+    deleteCampaign,
     triggerCampaign,
+    applySocketUpdate,
     refresh: () => fetchCampaigns(params),
   };
 }

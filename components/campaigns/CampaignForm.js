@@ -14,15 +14,22 @@ const GROUP_OPTIONS = [
   { value: 'TRANSFERRED', label: 'المحولون'   },
 ];
 
-export default function CampaignForm({ templates = [], onSubmit, onCancel }) {
+function toDatetimeLocal(isoString) {
+  if (!isoString) return '';
+  return new Date(isoString).toISOString().slice(0, 16);
+}
+
+export default function CampaignForm({ templates = [], onSubmit, onCancel, initialData = null }) {
+  const isEdit = !!initialData;
+
   const [form, setForm] = useState({
-    title: '',
-    templateId: '',
-    targetCustomerGroup: '',
-    scheduledAt: '',
+    title:               initialData?.title               ?? '',
+    templateId:          initialData?.template?.id        ?? '',
+    targetCustomerGroup: initialData?.targetCustomerGroup ?? '',
+    scheduledAt:         toDatetimeLocal(initialData?.scheduledAt),
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
 
   const templateOptions = templates.map((t) => ({ value: t.id, label: t.name }));
 
@@ -41,15 +48,14 @@ export default function CampaignForm({ templates = [], onSubmit, onCancel }) {
     setError(null);
     try {
       const payload = {
-        title: form.title,
-        templateId: form.templateId,
+        title:               form.title,
+        templateId:          form.templateId,
         targetCustomerGroup: form.targetCustomerGroup,
-        scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : null,
+        scheduledAt:         form.scheduledAt ? new Date(form.scheduledAt).toISOString() : null,
       };
       await onSubmit(payload);
-      setForm({ title: '', templateId: '', targetCustomerGroup: '', scheduledAt: '' });
     } catch (err) {
-      setError(err.response?.data?.message || 'حدث خطأ أثناء إنشاء الحملة');
+      setError(err.response?.data?.message || 'حدث خطأ أثناء حفظ الحملة');
     } finally {
       setLoading(false);
     }
@@ -106,7 +112,7 @@ export default function CampaignForm({ templates = [], onSubmit, onCancel }) {
           إلغاء
         </Button>
         <Button type="submit" loading={loading}>
-          إنشاء الحملة
+          {isEdit ? 'حفظ التعديلات' : 'إنشاء الحملة'}
         </Button>
       </ModalFooter>
     </form>
