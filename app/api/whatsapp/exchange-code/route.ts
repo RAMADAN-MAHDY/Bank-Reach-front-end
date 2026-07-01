@@ -55,7 +55,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
       code: code.trim(),
     });
 
-    const response = await fetch(`${tokenUrl}?${params.toString()}`, {
+    const fullUrl = `${tokenUrl}?${params.toString()}`;
+    console.log('Meta API Request URL (without secret):', 
+      `${tokenUrl}?client_id=${clientId}&code=${code.trim().substring(0, 20)}...`);
+    console.log('Code length:', code.trim().length);
+    console.log('API Version:', apiVersion);
+
+    const response = await fetch(fullUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -64,27 +70,49 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
 
     // Handle Meta API response
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Meta API error:', {
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        console.error('Failed to parse Meta API error response:', e);
+      }
+      
+      console.error('Meta API error details:', {
         status: response.status,
         statusText: response.statusText,
+        url: fullUrl.replace(clientSecret, '***'),
         error: errorData,
+        clientId: clientId,
+        apiVersion: apiVersion,
+        codeLength: code.trim().length,
       });
 
       let errorMessage = 'Failed to exchange authorization code';
+      let detailedMessage = '';
       
       if (response.status === 400) {
         errorMessage = 'Invalid or expired authorization code';
+        const metaError = errorData as { error?: { message?: string }; message?: string };
+        detailedMessage = metaError.error?.message || metaError.message || '';
       } else if (response.status === 401) {
         errorMessage = 'Invalid Facebook app credentials';
+        detailedMessage = 'Check FACEBOOK_APP_SECRET and NEXT_PUBLIC_FACEBOOK_APP_ID';
       } else if (response.status === 403) {
         errorMessage = 'Access denied by Meta API';
+        const metaError = errorData as { error?: { message?: string }; message?: string };
+        detailedMessage = metaError.error?.message || '';
       }
 
       return NextResponse.json(
         {
           success: false,
           message: errorMessage,
+          details: detailedMessage,
+          debug: {
+            clientId: clientId,
+            apiVersion: apiVersion,
+            codeLength: code.trim().length,
+          }
         },
         { status: response.status }
       );

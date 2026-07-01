@@ -155,7 +155,17 @@ export default function WhatsAppEmbeddedSignup({
         .catch((err) => {
           console.error('Exchange error:', err);
           setStatus('failed');
-          const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+          let errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+          
+          // Try to get more details from the response data
+          if (err instanceof Error && err.message.includes('authorization code')) {
+            errorMessage = `Invalid authorization code. Possible reasons:
+            1. Code expired (valid for 30 seconds only)
+            2. Incorrect App ID or App Secret
+            3. WhatsApp Business API not enabled
+            4. Configuration ID incorrect`;
+          }
+          
           setError(errorMessage);
           if (onError) onError(errorMessage);
         });
