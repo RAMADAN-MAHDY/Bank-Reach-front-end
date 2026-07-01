@@ -5,7 +5,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
   try {
     // Parse request body
     const body = await request.json();
-    const { code } = body as ExchangeCodeRequest;
+    const { code, redirect_uri } = body as ExchangeCodeRequest;
 
     // Validate code
     if (!code || typeof code !== 'string' || code.trim() === '') {
@@ -49,15 +49,26 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
     // Prepare request to Meta Graph API
     const tokenUrl = `https://graph.facebook.com/${apiVersion}/oauth/access_token`;
     
+    // For WhatsApp Embedded Signup, we need to use the same redirect_uri that Facebook SDK uses
+    // Try the provided redirect_uri, or use the default one for embedded signup
     const params = new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
       code: code.trim(),
+      grant_type: 'authorization_code',
     });
 
+    // Add redirect_uri if provided (for embedded signup, this is required)
+    if (redirect_uri && typeof redirect_uri === 'string' && redirect_uri.trim() !== '') {
+      params.append('redirect_uri', redirect_uri.trim());
+      console.log('Using provided redirect_uri:', redirect_uri);
+    } else {
+      console.log('No redirect_uri provided, using empty redirect_uri for embedded signup');
+    }
+
     const fullUrl = `${tokenUrl}?${params.toString()}`;
-    console.log('Meta API Request URL (without secret):', 
-      `${tokenUrl}?client_id=${clientId}&code=${code.trim().substring(0, 20)}...`);
+    console.log('Meta API Request (without secret):', 
+      `${tokenUrl}?client_id=${clientId}&code=${code.trim().substring(0, 20)}...&grant_type=authorization_code`);
     console.log('Code length:', code.trim().length);
     console.log('API Version:', apiVersion);
 

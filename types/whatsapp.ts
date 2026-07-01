@@ -10,6 +10,7 @@ export interface MetaTokenResponse {
 
 export interface ExchangeCodeRequest {
   code: string;
+  redirect_uri?: string;
 }
 
 export interface ExchangeCodeResponse {
