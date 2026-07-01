@@ -22,6 +22,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
     const clientId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
     const clientSecret = process.env.FACEBOOK_APP_SECRET;
     const apiVersion = process.env.NEXT_PUBLIC_FACEBOOK_API_VERSION || 'v25.0';
+    const defaultRedirectUri = process.env.REDIRECT_URI;
 
     // Validate environment variables
     if (!clientId) {
@@ -46,37 +47,45 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
       );
     }
 
-    // Prepare request to Meta Graph API
-    const tokenUrl = `https://graph.facebook.com/${apiVersion}/oauth/access_token`;
-    
-    // For WhatsApp Embedded Signup, we need to use the same redirect_uri that Facebook SDK uses
-    // Try the provided redirect_uri, or use the default one for embedded signup
-    const params = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      code: code.trim(),
-      grant_type: 'authorization_code',
-    });
+    // Determine the redirect_uri to use
+    const finalRedirectUri = (redirect_uri && typeof redirect_uri === 'string' && redirect_uri.trim() !== '') 
+      ? redirect_uri.trim() 
+      : defaultRedirectUri;
 
-    // Add redirect_uri if provided (for embedded signup, this is required)
-    if (redirect_uri && typeof redirect_uri === 'string' && redirect_uri.trim() !== '') {
-      params.append('redirect_uri', redirect_uri.trim());
-      console.log('Using provided redirect_uri:', redirect_uri);
-    } else {
-      console.log('No redirect_uri provided, using empty redirect_uri for embedded signup');
+    if (!finalRedirectUri) {
+      console.error('No redirect_uri available');
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'No redirect_uri available',
+        },
+        { status: 400 }
+      );
     }
 
-    const fullUrl = `${tokenUrl}?${params.toString()}`;
+    console.log('Using redirect_uri:', finalRedirectUri);
+
+    // Prepare request to Meta Graph API using FormData
+    const tokenUrl = `https://graph.facebook.com/${apiVersion}/oauth/access_token`;
+    
+    const formData = new URLSearchParams();
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    formData.append('code', code.trim());
+    formData.append('grant_type', 'authorization_code');
+    formData.append('redirect_uri', finalRedirectUri);
+
     console.log('Meta API Request (without secret):', 
-      `${tokenUrl}?client_id=${clientId}&code=${code.trim().substring(0, 20)}...&grant_type=authorization_code`);
+      `${tokenUrl}?client_id=${clientId}&code=${code.trim().substring(0, 20)}...&grant_type=authorization_code&redirect_uri=${finalRedirectUri}`);
     console.log('Code length:', code.trim().length);
     console.log('API Version:', apiVersion);
 
-    const response = await fetch(fullUrl, {
-      method: 'GET',
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
+      body: formData,
     });
 
     // Handle Meta API response
@@ -91,11 +100,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
       console.error('Meta API error details:', {
         status: response.status,
         statusText: response.statusText,
-        url: fullUrl.replace(clientSecret, '***'),
+        url: tokenUrl,
         error: errorData,
         clientId: clientId,
         apiVersion: apiVersion,
         codeLength: code.trim().length,
+        redirectUri: finalRedirectUri,
       });
 
       let errorMessage = 'Failed to exchange authorization code';
@@ -123,6 +133,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
             clientId: clientId,
             apiVersion: apiVersion,
             codeLength: code.trim().length,
+            redirectUri: finalRedirectUri,
           }
         },
         { status: response.status }
