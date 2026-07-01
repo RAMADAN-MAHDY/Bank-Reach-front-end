@@ -131,9 +131,12 @@ export default function WhatsAppEmbeddedSignup({
       console.log('Starting code exchange with code:', response.authResponse.code.substring(0, 20) + '...');
 
       // Determine the redirect URI based on the current environment
+      // Important: This must match EXACTLY what's in Meta Dashboard
       const protocol = window.location.protocol;
       const host = window.location.host;
       const redirectUri = `${protocol}//${host}/auth/callback`;
+
+      console.log('Using redirect_uri in API request:', redirectUri);
 
       // Exchange code for access token (non-async callback)
       fetch('/api/whatsapp/exchange-code', {
@@ -170,7 +173,9 @@ export default function WhatsAppEmbeddedSignup({
             2. Incorrect App ID or App Secret
             3. WhatsApp Business API not enabled
             4. Configuration ID incorrect
-            5. redirect_uri not added to Meta Dashboard`;
+            5. redirect_uri not added to Meta Dashboard
+            6. redirect_uri mismatch between frontend and backend
+            7. Trailing slash difference in redirect_uri`;
           }
           
           setError(errorMessage);
@@ -199,11 +204,12 @@ export default function WhatsAppEmbeddedSignup({
       }
 
       // Determine the redirect URI based on the current environment
+      // Important: This must match EXACTLY what's in Meta Dashboard
       const protocol = window.location.protocol;
       const host = window.location.host;
       const redirectUri = `${protocol}//${host}/auth/callback`;
       
-      console.log('Using redirect_uri:', redirectUri);
+      console.log('Using redirect_uri in FB.login:', redirectUri);
 
       // Start WhatsApp Embedded Signup flow
       FB.login(

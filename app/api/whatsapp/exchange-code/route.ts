@@ -63,7 +63,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
       );
     }
 
-    console.log('Using redirect_uri:', finalRedirectUri);
+    // Normalize the redirect_uri to ensure consistency
+    // Remove trailing slash if present (except for root path)
+    const normalizedRedirectUri = finalRedirectUri.replace(/\/$/, '');
+    
+    console.log('Using redirect_uri in backend:', normalizedRedirectUri);
+    console.log('Original redirect_uri from frontend:', redirect_uri);
 
     // Prepare request to Meta Graph API using FormData
     const tokenUrl = `https://graph.facebook.com/${apiVersion}/oauth/access_token`;
@@ -73,10 +78,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
     formData.append('client_secret', clientSecret);
     formData.append('code', code.trim());
     formData.append('grant_type', 'authorization_code');
-    formData.append('redirect_uri', finalRedirectUri);
+    formData.append('redirect_uri', normalizedRedirectUri);
 
     console.log('Meta API Request (without secret):', 
-      `${tokenUrl}?client_id=${clientId}&code=${code.trim().substring(0, 20)}...&grant_type=authorization_code&redirect_uri=${finalRedirectUri}`);
+        `${tokenUrl}?client_id=${clientId}&code=${code.trim().substring(0, 20)}...&grant_type=authorization_code&redirect_uri=${normalizedRedirectUri}`);
     console.log('Code length:', code.trim().length);
     console.log('API Version:', apiVersion);
 
@@ -105,7 +110,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
         clientId: clientId,
         apiVersion: apiVersion,
         codeLength: code.trim().length,
-        redirectUri: finalRedirectUri,
+        redirectUri: normalizedRedirectUri,
       });
 
       let errorMessage = 'Failed to exchange authorization code';
