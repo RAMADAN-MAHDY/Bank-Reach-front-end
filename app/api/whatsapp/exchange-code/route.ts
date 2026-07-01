@@ -53,7 +53,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExchangeC
       client_id: clientId,
       client_secret: clientSecret,
       code: code.trim(),
-      redirect_uri: '', // Empty for embedded signup
     });
 
     const response = await fetch(`${tokenUrl}?${params.toString()}`, {

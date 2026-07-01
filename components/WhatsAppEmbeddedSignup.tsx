@@ -115,10 +115,20 @@ export default function WhatsAppEmbeddedSignup({
 
   // Handle Facebook login callback
   const handleFacebookLogin = useCallback((response: FacebookLoginResponse) => {
+    console.log('Facebook login response:', response);
+    
+    // Prevent duplicate processing
+    if (status !== 'idle') {
+      console.log('Already processing, ignoring duplicate callback');
+      return;
+    }
+
     if (response.status === 'connected' && response.authResponse?.code) {
       // Start the exchange process
       setStatus('connecting');
       setError('');
+
+      console.log('Starting code exchange with code:', response.authResponse.code.substring(0, 20) + '...');
 
       // Exchange code for access token (non-async callback)
       fetch('/api/whatsapp/exchange-code', {
@@ -132,21 +142,25 @@ export default function WhatsAppEmbeddedSignup({
       })
         .then(async (exchangeResponse) => {
           const data = await exchangeResponse.json();
+          console.log('Exchange response:', data);
 
           if (!exchangeResponse.ok || !data.success) {
             throw new Error(data.message || 'Failed to exchange authorization code');
           }
 
           setAccessToken(data.access_token);
+          console.log('Access token received:', data.access_token.substring(0, 20) + '...');
           // Status will be updated by message listener when embedded signup completes
         })
         .catch((err) => {
+          console.error('Exchange error:', err);
           setStatus('failed');
           const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
           setError(errorMessage);
           if (onError) onError(errorMessage);
         });
     } else {
+      console.log('Facebook login failed:', response.status);
       setStatus('failed');
       const errorMessage = response.status === 'not_authorized' 
         ? 'User denied authorization'
@@ -154,7 +168,7 @@ export default function WhatsAppEmbeddedSignup({
       setError(errorMessage);
       if (onError) onError(errorMessage);
     }
-  }, [onError]);
+  }, [onError, status]);
 
   // Handle connect button click
   const handleConnect = useCallback(async () => {
