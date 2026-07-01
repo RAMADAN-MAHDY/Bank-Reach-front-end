@@ -25,7 +25,15 @@ export default function WhatsAppEmbeddedSignup({
   const [error, setError] = useState<string>('');
   const [assets, setAssets] = useState<WhatsAppAssets | null>(null);
 
-  // Refs for cleanup
+  // Keep latest callbacks in refs so the message listener never goes stale
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  const onCancelRef = useRef(onCancel);
+  useEffect(() => { onSuccessRef.current = onSuccess; }, [onSuccess]);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+  useEffect(() => { onCancelRef.current = onCancel; }, [onCancel]);
+
+  // Ref for the registered listener so we can remove it on unmount
   const messageListenerRef = useRef<((event: MessageEvent) => void) | null>(null);
 
   // Cleanup function
@@ -36,56 +44,50 @@ export default function WhatsAppEmbeddedSignup({
     }
   }, []);
 
-  // Setup message listener for embedded signup events
+  // Register the message listener once on mount — uses refs so it never
+  // needs to be re-created and can never miss an event due to re-renders.
   const setupMessageListener = useCallback(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Debug: log every postMessage so we can see what Facebook sends
+      if (event.data && typeof event.data === 'object') {
+        console.log('[postMessage received]', event.origin, event.data);
+      }
+
       try {
         const message = event.data as EmbeddedSignupMessage;
 
-        if (message.type === 'WA_EMBEDDED_SIGNUP') {
-          console.log('WhatsApp Embedded Signup Event:', message);
+        if (message?.type === 'WA_EMBEDDED_SIGNUP') {
+          console.log('✅ WA_EMBEDDED_SIGNUP event received:', message);
+          console.log('Event type:', message.event);
+          console.log('Full data:', message.data);
 
           switch (message.event) {
-           case 'FINISH': {
-  console.log('Embedded Signup Finished');
-  console.log('Full message:', message);
-  console.log('Message data:', message.data);
+            case 'FINISH': {
+              const { phone_number_id, waba_id, business_id } = message.data;
 
-  const { phone_number_id, waba_id, business_id } = message.data;
+              console.log('🎉 FINISH event fired!');
+              console.log('Phone Number ID:', phone_number_id);
+              console.log('WABA ID:', waba_id);
+              console.log('Business ID:', business_id);
 
-  console.log('Phone Number ID:', phone_number_id);
-  console.log('WABA ID:', waba_id);
-  console.log('Business ID:', business_id);
-
-  setAssets({
-    phone_number_id,
-    waba_id,
-    business_id,
-  });
-
-  setStatus('success');
-
-  if (onSuccess) {
-    onSuccess({
-      phone_number_id,
-      waba_id,
-      business_id,
-    });
-  }
-
-  break;
-}
+              setAssets({ phone_number_id, waba_id, business_id });
+              setStatus('success');
+              onSuccessRef.current?.({ phone_number_id, waba_id, business_id });
+              break;
+            }
 
             case 'CANCEL':
+              console.log('❌ CANCEL event fired');
               setStatus('cancelled');
               setError('User cancelled the WhatsApp signup flow');
-              if (onCancel) onCancel();
+              onCancelRef.current?.();
               break;
 
             case 'ERROR':
+              console.log('⚠️ ERROR event fired');
               setStatus('failed');
               setError('WhatsApp signup encountered an error');
-              if (onError) onError('WhatsApp signup encountered an error');
+              onErrorRef.current?.('WhatsApp signup encountered an error');
               break;
           }
         }
@@ -94,17 +96,16 @@ export default function WhatsAppEmbeddedSignup({
       }
     };
 
-    // Remove existing listener if any
+    // Remove any previous listener before adding the new one
     cleanup();
-
-    // Add new listener
     window.addEventListener('message', handleMessage);
     messageListenerRef.current = handleMessage;
 
     return cleanup;
-  }, [cleanup, onSuccess, onError, onCancel]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleanup]); // ← intentionally omit callbacks; we use refs instead
 
-  // Initialize Facebook SDK and setup listeners
+  // Initialize Facebook SDK and register the message listener (runs once on mount)
   useEffect(() => {
     let mounted = true;
 
@@ -118,7 +119,7 @@ export default function WhatsAppEmbeddedSignup({
         if (mounted) {
           setStatus('failed');
           setError('Failed to load Facebook SDK');
-          if (onError) onError('Failed to load Facebook SDK');
+          onErrorRef.current?.('Failed to load Facebook SDK');
         }
       }
     };
@@ -129,7 +130,9 @@ export default function WhatsAppEmbeddedSignup({
       mounted = false;
       cleanup();
     };
-  }, [setupMessageListener, cleanup, onError]);
+  // setupMessageListener is stable (only depends on cleanup which is also stable)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle Facebook login callback
   const handleFacebookLogin = useCallback(
