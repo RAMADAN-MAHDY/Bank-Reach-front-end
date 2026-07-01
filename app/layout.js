@@ -1,5 +1,5 @@
 import './globals.css'
-// import PWARegister from '@/components/PWARegister' // مؤقتاً معطل
+import PWARegister from '@/components/PWARegister'
 
 export const metadata = {
   title: 'BizReach — منصة التواصل التجاري',
@@ -25,7 +25,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="ar" dir="rtl" className="h-full">
       <body className="h-full">
-        {/* <PWARegister /> */}
+        <PWARegister />
         {children}
       </body>
     </html>

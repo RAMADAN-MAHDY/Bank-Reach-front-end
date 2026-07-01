@@ -114,38 +114,38 @@ export default function WhatsAppEmbeddedSignup({
   }, [setupMessageListener, cleanup, onError]);
 
   // Handle Facebook login callback
-  const handleFacebookLogin = useCallback(async (response: FacebookLoginResponse) => {
+  const handleFacebookLogin = useCallback((response: FacebookLoginResponse) => {
     if (response.status === 'connected' && response.authResponse?.code) {
-      try {
-        setStatus('connecting');
-        setError('');
+      // Start the exchange process
+      setStatus('connecting');
+      setError('');
 
-        // Exchange code for access token
-        const exchangeResponse = await fetch('/api/whatsapp/exchange-code', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: response.authResponse.code,
-          }),
+      // Exchange code for access token (non-async callback)
+      fetch('/api/whatsapp/exchange-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: response.authResponse.code,
+        }),
+      })
+        .then(async (exchangeResponse) => {
+          const data = await exchangeResponse.json();
+
+          if (!exchangeResponse.ok || !data.success) {
+            throw new Error(data.message || 'Failed to exchange authorization code');
+          }
+
+          setAccessToken(data.access_token);
+          // Status will be updated by message listener when embedded signup completes
+        })
+        .catch((err) => {
+          setStatus('failed');
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+          setError(errorMessage);
+          if (onError) onError(errorMessage);
         });
-
-        const data = await exchangeResponse.json();
-
-        if (!exchangeResponse.ok || !data.success) {
-          throw new Error(data.message || 'Failed to exchange authorization code');
-        }
-
-        setAccessToken(data.access_token);
-        // Status will be updated by message listener when embedded signup completes
-
-      } catch (err) {
-        setStatus('failed');
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-        setError(errorMessage);
-        if (onError) onError(errorMessage);
-      }
     } else {
       setStatus('failed');
       const errorMessage = response.status === 'not_authorized' 
